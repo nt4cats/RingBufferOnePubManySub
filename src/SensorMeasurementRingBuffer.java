@@ -7,7 +7,7 @@ import java.util.List;
 public class SensorMeasurementRingBuffer {
 
     final boolean DEBUG_OUTPUT = false;
-
+    
     private Object lockObj;
 
     private SensorMeasurement[] buffer;
@@ -87,8 +87,12 @@ public class SensorMeasurementRingBuffer {
 
         private int readPoint;
         private long virtualReadCount;
+        
+        private SensorMeasurement lastReturnedMeasurement;
 
         SensorMeasurementBufferConsumer() {
+            lastReturnedMeasurement = new SensorMeasurement();
+            
             synchronized (lockObj) {
                 readPoint = publishRef;
                 if(virtualCount > buffer.length){
@@ -109,12 +113,21 @@ public class SensorMeasurementRingBuffer {
                 if(countAvailable() > 0) {
                     SensorMeasurement returnValue = buffer[readPoint];
                     incrementReadPoint();
+                    lastReturnedMeasurement.setValue(returnValue.getValue());
+                    lastReturnedMeasurement.setTimestamp(returnValue.getTimestamp());
                     return returnValue;
                 } else {
                     return null;
                 }
             }
         }
+        
+        public SensorMeasurement getPrevious() {
+            synchronized (lockObj) {
+                return lastReturnedMeasurement;
+            }
+        }
+
 
         private void incrementReadPoint() {
             if(++readPoint >= buffer.length) {
@@ -127,6 +140,22 @@ public class SensorMeasurementRingBuffer {
             synchronized (lockObj) {
                 if((virtualCount > buffer.length) && (beforePublishRef == readPoint)){
                     incrementReadPoint();
+                }
+            }
+        }
+        
+        public void reset() {
+            synchronized (lockObj) {
+                readPoint = publishRef;
+                incrementReadPoint();
+            }
+        }
+        
+        public void flush() {
+            synchronized (lockObj) {
+                readPoint = publishRef -1;
+                if(readPoint < 0) {
+                    readPoint = buffer.length -1;
                 }
             }
         }
