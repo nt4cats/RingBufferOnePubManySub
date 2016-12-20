@@ -59,6 +59,7 @@ public class SimulatedGraphingRoutine {
             }
         }
         
+        b.removeConsumer(c);
     }
     
     private void imaginaryClearTheScreen() {
